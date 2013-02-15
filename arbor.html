@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ArborJS Test</title>
+    <style>
+        body
+        {
+            font-family: Monospace;
+            background-image: -webkit-radial-gradient(center, circle closest-corner, #000000 0%, #212121 100%);
+            margin: 0px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script src="lib/three.min.js"></script>
+    <script src="shaders/ConvolutionShader.js"></script>
+    <script src="shaders/CopyShader.js"></script>
+    <script src="shaders/FXAAShader.js"></script>
+    <script src="lib/postprocessing/EffectComposer.js"></script>
+    <script src="lib/postprocessing/MaskPass.js"></script>
+    <script src="lib/postprocessing/RenderPass.js"></script>
+    <script src="lib/postprocessing/ShaderPass.js"></script>
+    <script src="lib/postprocessing/BloomPass.js"></script>
+    <script src="lib/Detector.js"></script>
+    <script src="lib/OrbitControls.js"></script>
+    <script src="lib/Arbor.js"></script>
+    <script>
+        if(!Detector.webgl) Detector.addGetWebGLMessage();
+
+        var container;
+        var camera, scene, renderer, composer, controls;
+        var clock = new THREE.Clock();
+        var tree;
+
+        init();
+        update();
+
+        function init()
+        {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+            camera = new THREE.PerspectiveCamera
+            (
+                33,
+                window.innerWidth / window.innerHeight,
+                1,
+                10000
+            );
+            camera.position.z = 700;
+
+            controls = new THREE.OrbitControls(camera);
+            scene = new THREE.Scene();
+
+            // INIT TREE
+            tree = new ArborJS.Tree();
+            tree.maxIterations = 7;
+
+            // Parametrized Rule
+            tree.grammar['C'] =
+            {
+                arguments: { a: 0.6, b: 5 },
+                expression: "v(a)F(b)^(a)[A]v(a)F(b)^(a)[A]"
+            };
+            tree.grammar['B'] =
+            {
+                arguments: { a: 1.2, b: 10 },
+                expression: "v(a)F(b)^(a)[C(2.0, 20)]v(a)F(b)^(a)[C]"
+            };
+            tree.grammar['A'] =
+            {
+                expression: "`(1,0,0)[B]F(10)v(0.5)`(0,0,1)v(0.5)F(10)<(0.1)"
+            };
+
+            tree.generate(Array(5).join("A"));
+            scene.add(tree);
+
+            // INIT RENDERER
+            renderer = new THREE.WebGLRenderer
+            ({
+                clearColor: 0x000000,
+                clearAlpha: 1,
+                antialias: false
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.autoClear = false;
+            renderer.setClearColorHex(0x000000, 0.0);
+
+            container.appendChild(renderer.domElement);
+            window.addEventListener('resize', onWindowResize, false);
+
+            // INIT POSTPROCESSING
+            var renderModel = new THREE.RenderPass(scene, camera, null, null, 1);
+            var effectBloom = new THREE.BloomPass(1.5);
+            var effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+            var effectFXAA = new THREE.ShaderPass(THREE.FXAAShader);
+
+            var width = window.innerWidth || 2;
+            var height = window.innerHeight || 2;
+
+            effectFXAA.uniforms['resolution'].value.set(1 / width, 1 / height);
+            effectCopy.renderToScreen = true;
+
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderModel);
+            composer.addPass(effectFXAA);
+            composer.addPass(effectBloom);
+            composer.addPass(effectCopy);
+        }
+
+        function update()
+        {
+            requestAnimationFrame(update);
+            controls.update();
+            render();
+        }
+
+        function render()
+        {
+            var delta = clock.getDelta(),
+                    time = clock.getElapsedTime();
+
+            camera.lookAt(scene.position);
+
+            renderer.clear();
+            composer.render();
+        }
+
+        function onWindowResize()
+        {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
