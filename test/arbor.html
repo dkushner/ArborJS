@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+    <title>ArborJS Test</title>
+    <link rel="stylesheet" href="../lib/jQueryUI/css/dot-luv/jquery-ui-1.10.0.custom.min.css">
+    <style>
+        body
+        {
+            font-family: Arial, sans-serif;
+            background-image: -webkit-radial-gradient(center, circle closest-corner, #000000 0%, #212121 100%);
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #container h3, li
+        {
+            font-size: 13px;
+            font-variant: small-caps;
+        }
+        #container button
+        {
+            font-size: 10px;
+            font-variant: titling-caps;
+            width: 100%;
+        }
+        #container .ui-draggable-dragging
+        {
+            width: 20em;
+        }
+
+        #composer
+        {
+            position: absolute;
+            z-index: 100;
+            width: 20%;
+            padding: 0.5em;
+        }
+
+        #scratch-pad
+        {
+            position: absolute;
+            z-index: 100;
+            width: 100%;
+            bottom: 0;
+        }
+
+        #fn-drop
+        {
+            width: 220px;
+            height: 220px;
+            padding: 0.2em 0.2em 0.2em 0.2em;
+            font-variant: small-caps;
+        }
+
+        .ui-accordion .ui-accordion-content
+        {
+            overflow: visible;
+            padding: 0.2em 0.2em 0.2em 0.2em;
+        }
+        .flip-h
+        {
+            -moz-transform: scaleX(-1);
+            -o-transform: scaleX(-1);
+            -webkit-transform: scaleX(-1);
+            transform: scaleX(-1);
+            filter: FlipH;
+            -ms-filter: "FlipH";
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="composer">
+            <h3>Built-in Actions</h3>
+            <div>
+                <button class="tree-function" func="F">Forward</button>
+                <button class="tree-function" func="^">Pitch Down</button>
+                <button class="tree-function" func="v">Pitch Up</button>
+                <button class="tree-function" func="-">Yaw Left</button>
+                <button class="tree-function" func="+">Yaw Right</button>
+                <button class="tree-function" func="<">Roll Left</button>
+                <button class="tree-function" func=">">Roll Right</button>
+                <button class="tree-function" func="`">Set Color</button>
+            </div>
+            <h3>User Actions</h3>
+            <div>
+            </div>
+        </div>
+        <div id="scratch-pad">
+            <ul>
+                <li><a href="#new-action">New Action</a></li>
+                <li><a href="#text-mode">Text Mode</a></li>
+            </ul>
+            <div id="new-action">
+                <div id="fn-drop" class="ui-state-highlight ui-corner-all">
+                </div>
+            </div>
+            <div id="text-mode">
+                <p>Text mode things are cool.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../lib/three.min.js"></script>
+    <script src="../shaders/ConvolutionShader.js"></script>
+    <script src="../shaders/CopyShader.js"></script>
+    <script src="../shaders/FXAAShader.js"></script>
+    <script src="../lib/postprocessing/EffectComposer.js"></script>
+    <script src="../lib/postprocessing/MaskPass.js"></script>
+    <script src="../lib/postprocessing/RenderPass.js"></script>
+    <script src="../lib/postprocessing/ShaderPass.js"></script>
+    <script src="../lib/postprocessing/BloomPass.js"></script>
+    <script src="../lib/Detector.js"></script>
+    <script src="../lib/OrbitControls.js"></script>
+    <script src="../lib/Arbor.js"></script>
+    <script src="../lib/jQuery/jquery-1.9.1.min.js"></script>
+    <script src="../lib/jQueryUI/js/jquery-ui-1.10.0.custom.min.js"></script>
+    <script id="webGL">
+        if(!Detector.webgl) Detector.addGetWebGLMessage();
+
+        var container = $('#container');
+        var camera, scene, renderer, composer, controls;
+        var clock = new THREE.Clock();
+        var tree;
+
+        init();
+        initGUI();
+        update();
+
+        function init()
+        {
+            camera = new THREE.PerspectiveCamera
+                    (
+                            33,
+                            window.innerWidth / window.innerHeight,
+                            1,
+                            10000
+                    );
+            camera.position.z = 700;
+
+            controls = new THREE.OrbitControls(camera);
+            scene = new THREE.Scene();
+
+            // INIT TREE
+            tree = new ArborJS.Tree();
+            tree.maxIterations = 7;
+            tree.grammar['C'] =
+            {
+                arguments: { a: 0.6, b: 5 },
+                expression: "v(a)F(b)^(a)[A]v(a)F(b)^(a)"
+            };
+            tree.grammar['B'] =
+            {
+                arguments: { a: 1.2, b: 10 },
+                expression: "v(a)F(b)^(a)[C]v(a)F(b)^(a)"
+            };
+            tree.grammar['A'] =
+            {
+                expression: "`(1,0,0)[B]F(10)v(0.5)`(0,0,1)[B]F(10)v(0.5)<(0.1)"
+            };
+
+            tree.generate(Array(50).join("A"));
+            scene.add(tree);
+
+            // INIT RENDERER
+            renderer = new THREE.WebGLRenderer
+                    ({
+                        clearColor: 0x000000,
+                        clearAlpha: 1,
+                        antialias: false
+                    });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.autoClear = false;
+            renderer.setClearColorHex(0x000000, 0.0);
+
+            container.append(renderer.domElement);
+            window.addEventListener('resize', onWindowResize, false);
+
+            // INIT POSTPROCESSING
+            var renderModel = new THREE.RenderPass(scene, camera, null, null, 1);
+            var effectBloom = new THREE.BloomPass(1.5);
+            var effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+            var effectFXAA = new THREE.ShaderPass(THREE.FXAAShader);
+
+            var width = window.innerWidth || 2;
+            var height = window.innerHeight || 2;
+
+            effectFXAA.uniforms['resolution'].value.set(1 / width, 1 / height);
+            effectCopy.renderToScreen = true;
+
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderModel);
+            composer.addPass(effectFXAA);
+            composer.addPass(effectBloom);
+            composer.addPass(effectCopy);
+
+        }
+
+        function initGUI()
+        {
+            // Create sidebar accordion.
+            $("#composer").accordion
+                           ({
+                               header: "h3",
+                               collapsible: true,
+                               active: 0,
+                               heightStyle: "content"
+                           });
+
+            // Create all of the built-in buttons.
+            $("button:first").button
+                ({
+                    icons: { primary: "ui-icon-arrow-1-n" }
+                }).next().button
+                ({
+                    icons: { primary: "ui-icon-carat-1-s" }
+                }).next().button
+                ({
+                    icons: { primary: "ui-icon-carat-1-n" }
+                }).next().button
+                ({
+                    icons: { primary: "ui-icon-carat-1-w" }
+                }).next().button
+                ({
+                    icons: { primary: "ui-icon-carat-1-e" }
+                }).next()
+                .button
+                ({
+                    icons: { primary: "ui-icon-arrowreturnthick-1-w" }
+                }).next()
+                .button
+                ({
+                    icons: { primary: "ui-icon-arrowreturnthick-1-w flip-h"}
+                }).next()
+                .button
+                ({
+                    icons: { primary: "ui-icon-pencil" }
+                });
+
+            // Make buttons draggable.
+            $("button").draggable
+            ({
+                appendTo: "#container",
+                helper: "clone",
+                cancel: false,
+                zIndex: 105
+            })
+
+            var toggle = false;
+            $("#scratch-pad").tabs({ heightStyle: "content" })
+                    .find(".ui-tabs-nav")
+                    .click(function()
+                    {
+                        $(this).parent().stop().animate
+                        ({
+                            height: (toggle) ? "30%" : $(this).height()
+                        }, 1000);
+                        toggle = !toggle;
+                    })
+                    .find("[role=\"tab\"]")
+                    .click(function(event)
+                    {
+                        event.stopPropagation();
+                    });
+
+            $("#fn-drop").droppable
+            ({
+                accept: ".tree-function",
+                activeClass: "ui-state-hover",
+                hoverClass: "ui-state-active",
+                drop: function(event, ui)
+                {
+                    $(this).append(ui.draggable.clone(true));
+                }
+            });
+        }
+
+        function update()
+        {
+            requestAnimationFrame(update);
+            controls.update();
+            render();
+        }
+
+        function render()
+        {
+            var delta = clock.getDelta(),
+                    time = clock.getElapsedTime();
+
+            camera.lookAt(scene.position);
+
+            renderer.clear();
+            composer.render();
+        }
+
+        function onWindowResize()
+        {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
