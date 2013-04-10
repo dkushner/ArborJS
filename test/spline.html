@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+    <title>ArborJS Test</title>
+    <style>
+        body
+        {
+            font-family: Arial, sans-serif;
+            background-image: -webkit-radial-gradient(center, circle closest-corner, #000000 0%, #212121 100%);
+            margin: 0px;
+            overflow: hidden;
+        }
+        .flip-h
+        {
+            -moz-transform: scaleX(-1);
+            -o-transform: scaleX(-1);
+            -webkit-transform: scaleX(-1);
+            transform: scaleX(-1);
+            filter: FlipH;
+            -ms-filter: "FlipH";
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+    </div>
+
+    <script src="../lib/three.min.js"></script>
+    <script src="../lib/Detector.js"></script>
+    <script src="../lib/OrbitControls.js"></script>
+    <script src="../lib/jquery-1.9.1.min.js"></script>
+    <script src="../lib/jquery-ui-1.10.2.custom.min.js"></script>
+
+    <script id="webGL">
+        if(!Detector.webgl) Detector.addGetWebGLMessage();
+
+        var container = $('#container');
+        var camera, scene, renderer, controls, gui, material;
+        var clock = new THREE.Clock();
+        var geometry, vertices = [];
+
+        init();
+        update();
+
+        function init()
+        {
+            camera = new THREE.PerspectiveCamera
+                    (
+                            33,
+                            window.innerWidth / window.innerHeight,
+                            1,
+                            10000
+                    );
+            camera.position.z = 700;
+
+            controls = new THREE.OrbitControls(camera);
+            scene = new THREE.Scene();
+            scene.add(camera);
+
+            material = new THREE.LineBasicMaterial({color: 0xffffff});
+            geometry = new THREE.Geometry();
+            for(var i = 0; i < 20; i++)
+            {
+                if(i % 2 == 0)
+                    vertices.push(new THREE.Vector3(i * 2, i * 3, 0));
+                else
+                    vertices.push(new THREE.Vector3(i * -2, i * 3, 0));
+            }
+
+            var spline = new THREE.Spline(vertices);
+            var index, curved_pos, n_sub = 6;
+            for(i = 0; i < vertices.length * n_sub; i++)
+            {
+                index = i / (vertices.length * n_sub);
+                curved_pos = spline.getPoint(index);
+                geometry.vertices.push(new THREE.Vector3(curved_pos.x, curved_pos.y, curved_pos.z));
+            }
+
+            var line = new THREE.Line(geometry, material);
+            scene.add(line);
+
+            // INIT RENDERER
+            renderer = new THREE.WebGLRenderer
+                    ({
+                        clearColor: 0x000000,
+                        clearAlpha: 1,
+                        antialias: false
+                    });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColorHex(0x000000, 0.0);
+
+            container.append(renderer.domElement);
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function update()
+        {
+            requestAnimationFrame(update);
+            controls.update();
+            render();
+        }
+
+        function render()
+        {
+            var delta = clock.getDelta(),
+                    time = clock.getElapsedTime();
+
+            camera.lookAt(scene.position);
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize()
+        {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
