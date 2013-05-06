@@ -165,3 +165,9 @@ pip-log.txt
 # WebStorm
 .idea
 lib/jQueryUI/development-bundle
+
+#Sublime Text 2
+*.sublime-project
+*.sublime-workspace
+
+*.un~
