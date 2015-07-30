@@ -1,0 +1,17 @@
+{
+  "jspm": {
+    "main": "js/jquery.terminal-0.8.8",
+    "shim": {
+      "js/jquery.terminal-0.8.8": [
+        "jquery"
+      ]
+    }
+  },
+  "main": "js/jquery.terminal-0.8.8",
+  "shim": {
+    "js/jquery.terminal-0.8.8": [
+      "jquery"
+    ]
+  },
+  "registry": "github"
+}
