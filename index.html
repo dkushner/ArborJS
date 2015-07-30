@@ -1,132 +1,18 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/html">
-<head>
-    <title>ArborJS Test</title>
-    <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css">
-    <link href="css/style.css" rel="stylesheet">
-
-    <script src="js/three.min.js"></script>
-    <script src="js/Detector.js"></script>
-    <script src="js/OrbitControls.js"></script>
-    <script src="lib/Arbor.js"></script>
-    <script src="js/jquery-1.9.1.min.js"></script>
-    <script src="js/jquery.terminal-0.6.2.min.js"></script>
-    <script src="js/tween.min.js"></script>
-    <script src="js/arbor-console.js"></script>
-</head>
-
-<body>
-    <div id="wrapper">
-        <div id="console"></div>
-    </div>
-    <div id="container"></div>
-
-
-    <script id="webGL">
-        if(!Detector.webgl) Detector.addGetWebGLMessage();
-
-        var container = $('#container');
-        var camera, scene, renderer, controls, gui;
-        var clock = new THREE.Clock();
-        var curtree, trees = {};
-        var term;
-        var tween, tweenpos, tweentar;
-
-        init();
-        initGUI();
-        update();
-
-        function init()
-        {
-            camera = new THREE.PerspectiveCamera
-            (
-                33,
-                $('#container').innerWidth() / $('#container').innerHeight(),
-                1,
-                10000
-            );
-            camera.position.z = 700;
-
-            controls = new THREE.OrbitControls(camera);
-            scene = new THREE.Scene();
-            scene.add(camera);
-
-            // INIT TREE
-            var tree = new ArborJS.Tree();
-            tree.maxIterations = 7;
-            tree.grammar['C'] =
-            {
-                arguments: { a: 0.6, b: 5 },
-                expression: "v(a)F(b)^(a)[A]v(a)F(b)^(a)"
-            };
-            tree.grammar['B'] =
-            {
-                arguments: { a: 1.2, b: 10 },
-                expression: "v(a)F(b)^(a)[C]v(a)F(b)^(a)"
-            };
-            tree.grammar['A'] =
-            {
-                expression: "`(1,0,0)[B]F(10)v(0.5)`(0,0,1)[B]F(10)v(0.5)<(0.1)"
-            };
-
-            tree.generate(Array(50).join("A"));
-            tree.name = "demotree";
-            scene.add(tree);
-
-            trees["demotree"] = tree;
-            curtree = trees["demotree"];
-
-            // INIT RENDERER
-            renderer = new THREE.WebGLRenderer
-            ({
-                clearColor: 0x000000,
-                clearAlpha: 1,
-                antialias: false
-            });
-            renderer.setSize($('#container').innerWidth(), $('#container').innerHeight());
-            renderer.setClearColorHex(0x000000, 0.0);
-
-            container.append(renderer.domElement);
-            window.addEventListener('resize', onWindowResize, false);
-        }
-
-        function initGUI()
-        {
-            term = $('#console').terminal(
-            ArborJS.console.interpreter,
-            { 
-                prompt: ' >> ', 
-                greetings: ArborJS.console.signature.join('\n') + '\n',
-                greeting: true 
-            });
-            term.exec("help", true);
-        }
-
-        function update()
-        {
-            requestAnimationFrame(update);
-            controls.update();
-            TWEEN.update();
-            render();
-        }
-
-        function render()
-        {
-            var delta = clock.getDelta(),
-                    time = clock.getElapsedTime();
-
-            camera.lookAt(scene.position);
-            renderer.render(scene, camera);
-        }
-
-
-        // DOM EVENT HANDLERS
-        function onWindowResize()
-        {
-            camera.aspect = $('#container').innerWidth() / $('#container').innerHeight();
-            camera.updateProjectionMatrix();
-            renderer.setSize($('#container').innerWidth(), $('#container').innerHeight());
-        }
-    </script>
-</body>
+<html>
+  <head>
+    <title thr-title></title>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    <link rel="stylesheet" type="text/css" href="styles/app.css">
+    <script type="text/javascript" src="jspm_packages/system.js"></script>
+    <script type="text/javascript" src="config.js"></script>
+    <script>System.import('arborjs/main');</script>
+  </head>
+  <body>
+    <div id="console"></div>
+    <script type="text/javascript" src="index.js"></script>
+    <script type="text/javascript" src="bootstrap.js"></script>
+  </body>
 </html>
