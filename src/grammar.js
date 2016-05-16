@@ -1,22 +1,70 @@
 import _ from "lodash";
+import Rule from "./rule";
 
 const RESTRICTED = '()0123456789*+-/';
-const BINARY_REGEX = /^\s*(([-]?[0-9]*\.?[0-9]+)|(\w))(\+|\-|\*|\/)(([-]?[0-9]*\.?[0-9]+)|(\w))$/;
 
-export class Grammar {
-  constructor(constants) {
-    // Set up constants for this grammar. Constants cannot be expanded but they
-    // may have parameters.
-    this.constants = _.reduce(constants, (m, command, constant) => {
-      let symbol = constant[0];
-      if (_.contains(RESTRICTED, symbol)) {
-        console.error("Constant symbol %s uses restricted character.");
+export { RESTRICTED };
+
+export default class Grammar {
+  constructor() {
+    this.rules = {}
+  }
+
+  tokenize(source) {
+    let tokens = [];
+
+    // Sanitize source string of whitespace.
+    source = source.replace(/ /g, "");
+
+    for (let index = 0; index < source.length; index++) {
+      let symbol = source[index];
+
+      if (_.includes(RESTRICTED, symbol)) {
+        throw new Error(`Source contains restricted symbol "${symbol}"; position ${index}.`);
       }
 
-      m[symbol] = new Rule(constant);
-      return m;
-    }, {});
-    this.rules = {}; 
+      let token = { symbol };
+
+      if (source[index + 1] == "(") {
+        let close = source.indexOf(")", index + 1);
+
+        if (close == -1) {
+          throw new Error(`Source "${source}" has unclosed parameter list.`);
+        }
+
+        token.parameters = source.substring(index + 2, close).split(",");
+        index = close;
+      }
+
+      tokens.push(token);
+    }
+
+    return tokens;
+  }
+
+  interpret(source, limit) {
+    let expanded = source;
+    let tokens = [];
+
+    limit = limit || 1;
+
+    for (var level = 0; level < limit; level++) {
+      tokens = this.tokenize(expanded);
+      expanded = "";
+
+      _.each(tokens, (token) => {
+        let rule = this.rules[token.symbol];
+
+        if (!rule) {
+          throw new Error(`Unrecognized symbol ${token.symbol}.`);
+        }
+
+        expanded += rule.expand(token.parameters);
+      });
+    }
+
+    // Tokenize the final source string and drop any non-terminal tokens.
+    return this.tokenize(expanded);
   }
 
   scan(axiom, limit, cb, depth) {
@@ -30,10 +78,9 @@ export class Grammar {
     while (index < axiom.length) {
       let symbol = axiom[index];
 
-      let rule = this.constants[symbol] || this.rules[symbol];
+      let rule = this.rules[symbol];
       if (!rule) {
-        console.error("Unrecognized symbol %s.", symbol);
-        return;
+        throw new Error(`Unrecognized symbol ${token.symbol}.`);
       }
 
       // Check for an argument list and expand token to contain it.
@@ -44,7 +91,7 @@ export class Grammar {
       if (axiom[peek] == '(') {
         let close = axiom.indexOf(')', peek);
         if (close == -1) {
-          console.error("Invalid argument list for symbol %s.", symbol);
+          throw new Error(`Invalid argument list for symbol ${symbol}.`);
           return;
         }
 
@@ -64,73 +111,20 @@ export class Grammar {
     } 
   }
 
-  // Expand an axiomatic expression using the grammar's ruleset and returning
-  // the expanded string of terminals. 
-  expand(axiom, limit, depth) {
-    depth = depth || 0;
-
-    if (depth == limit) {
-      return '';
-    }
-
-    let result = '';
-    let index = 0;
-    while (index < axiom.length) {
-      let symbol = axiom[index];
-
-      let rule = this.constants[symbol] || this.rules[symbol];
-      if (!rule) {
-        console.error("Unrecognized symbol %s.", symbol);
-        return;
-      }
-
-      // Check for an argument list and expand token to contain it.
-      let peek = index + 1;
-      let end = index;
-      let args = [];
-
-      if (axiom[peek] == '(') {
-        let close = axiom.indexOf(')', peek);
-        if (close == -1) {
-          console.error("Invalid argument list for symbol %s.", symbol);
-          return;
-        }
-
-        args = axiom.substring(peek + 1, close).replace(/ /g, '').split(',');
-        end = close;
-      } 
-
-      // Have the rule evaluate itself with the given parameters.
-      let token = axiom.substring(index, end + 1);
-      let production = rule.evaluate(args);
-      if (production == token) {
-        result = result + production;
-      } else {
-        result = result + this.expand(production, limit, depth + 1);
-      }
-      index = end + 1;
-    } 
-    return result;
-  }
-
   addRule(pred, prod, conds) {
     let symbol = pred[0];
 
-    if (_.contains(RESTRICTED, symbol)) {
+    if (_.includes(RESTRICTED, symbol)) {
       console.error("Predecessor %s uses restricted symbol %s.", pred, symbol);
       return;
     }
 
-    if (_.contains(_.keys(this.constants), symbol)) {
+    if (_.includes(_.keys(this.terminals), symbol)) {
       console.error("Predecessor %s uses constant symbol %s.", pred, symbol);
       return;
     }
 
     this.rules[symbol] = new Rule(pred, prod, conds);
-    return this.rules[symbol];
-  }
-
-  getRule(symbol) {
-    return this.rules[symbol] || null;
+    return this;
   }
 }

@@ -1,26 +1,35 @@
 import _ from "lodash";
 
-class Context {
+const BINARY_PATTERN = /(\w+)(\+|\-|\*|\/)(\w+)/g;
+
+export default class Context {
   constructor(locals) {
-    this.locals = locals;
+    this.locals = locals || {};
+
+    let symbols = _.escapeRegExp(Object.keys(this.locals).join(''));
+    this.pattern = new RegExp(`[${symbols}]`);
   }
 
   consider(condition) {
-    let clean = condition.replace(/ /g, '');
-    if (!clean.length) {
-      console.error("Empty condition expression.");
-      return;
-    }
-
     let op = condition.match(/(\=|\<|\>)/)[1];
+    
     if (!op) {
-      console.error("Invalid condition expression %s.", condition);
-      return;
+      throw new Error(`Invalid conditional statement ${condition}. No operator.`);
     }
 
     let parts = condition.split(op);
-    let lhs = this.interpret(parts[0]);
-    let rhs = this.interpret(parts[1]);
+    let rawLeft = this.evaluate(parts[0]);
+    let rawRight = this.evaluate(parts[1]);
+    let lhs = parseFloat(rawLeft);
+    let rhs = parseFloat(rawRight);
+
+    if (_.isNaN(lhs)) {
+      throw new Error(`Unable to parse subexpression "${rawLeft}" of condition ${condition}.`);
+    }
+
+    if (_.isNaN(rhs)) {
+      throw new Error(`Unable to parse subexpression "${rawRight}" of condition ${condition}.`);
+    }
 
     switch (op) {
       case '=': {
@@ -38,32 +47,25 @@ class Context {
     }
   }
 
-  // Evaluate an expression in the given context. Only three types of expressions
-  // are permitted: local variable restatement, numeric constants and simple binary 
-  // arithmetic.
-  interpret(expression) {
-    // Condense the expression.
-    let clean = expression.replace(/ /g, '');
-    if (!clean.length) {
-      return null;
-    }
+  interpolate(expression) {
+    return _.replace(expression, this.pattern, (name, position, source) => {
+      return this.locals[name];
+    });
+  }
 
-    // Determine if this is an arithmetic expression.
-    let arithmetic = BINARY_REGEX.test(clean);
-    if (arithmetic) {
-      let parts = expression.match(BINARY_REGEX);
+  // Attempts to evaluate an arithmetic or constant expression.
+  // The function first interpolates the expression, replacing any local
+  // variables with their contextual value. It then evaluates any binary 
+  // expressions present in the expression
+  evaluate(expression) {
+    let interpolated = this.interpolate(expression);
 
-      let lhs = this.interpret(parts[1]);
+    // Then evaluate any binary operations present in the expression.
+    let evaluated = _.replace(interpolated, BINARY_PATTERN, (expr, position, source) => {
+      let parts = expr.match(BINARY_REGEX);
+      let lhs = parseFloat(parts[1]);
       let op = parts[4];
-      let rhs = this.interpret(parts[5]);
-
-      if (!lhs) {
-        console.error("Unrecognized token %s in expression %s.", lhs, expression);
-      }
-
-      if (!rhs) {
-        console.error("Unrecognized token %s in expression %s.", lhs, expression);
-      }
+      let rhs = parseFloat(parts[5]);
 
       switch (op) {
         case '+': {
@@ -82,18 +84,8 @@ class Context {
           return null;
         } break;
       }
-    } else {
-      let asNum = parseFloat(clean);
-      if (!_.isNaN(asNum)) {
-        return asNum;
-      }
+    }); 
 
-      asNum = parseFloat(this.locals[clean]);
-      if (_.isNaN(asNum)) {
-        console.error("Unknown variable reference %s.", clean);
-        return;
-      }
-      return asNum;
-    }
+    return evaluated;
   }
 }

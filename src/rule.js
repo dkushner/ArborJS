@@ -1,70 +1,108 @@
 import _ from "lodash";
-import * as Context from "./context";
+import Context from "./context";
+import { RESTRICTED } from "./grammar";
 
 export default class Rule {
-  constructor(pred, prod, conds) {
-    this.predecessor = pred;
+  constructor(pred, prod) {
+    this.predecessor = pred.replace(/ /g, '');
     this.symbol = pred[0];
-    this.arguments = [];
+    this.production = "";
+    this.parameters = [];
 
     // Check predecessor for arguments list.
-    if (pred[1] == '(') {
-      let close = pred.indexOf(')', 1);
+    if (this.predecessor[1] == '(') {
+      let close = this.predecessor.indexOf(')', 1);
+
       if (close == -1) {
-        console.error("Predecessor %s has malformed argument list.", pred);
-        return;
+        throw new Error(`Predecessor ${this.predecessor} has unclosed parameter list.`);
       }
 
-      this.arguments = pred.substring(2, close).replace(/ /g, '').split(',');
-    }
-
-    if (_.isObject(prod)) {
-      this.production = pred;
-      this.conditionals = prod;
-    } else {
-      this.production = prod;
-      this.conditionals = conds;
+      this.parameters = _.map(this.predecessor.substring(2, close).replace(/ /g, '').split(','), (param) => {
+        if (param.length != 1 || _.includes(RESTRICTED, param)) {
+          throw new Error(`Predecessor ${this.predecessor} has illegal parameter '${param}'.`);
+        }
+        
+        return param;
+      });
     }
   }
 
   addProduction(value, condition) {
-    if (!condition) {
-      this.production = value;
-    } else {
-      this.conditionals[condition] = value;
+    if (!_.isString(value)) {
+      throw new Error(`Invalid type for production. Expected string, received ${typeof value}.`);
     }
+
+    if (!condition) {
+      this.production = value.replace(/ /g, '');
+      return this;
+    } 
+
+    if (!_.isString(condition)) {
+      throw new Error(`Invalid type for condition. Expected string, received ${typeof condition}.`);
+    }
+
+    let normalized = condition.replace(/ /g, '');
+    let operations = normalized.match(/(\=|\<|\>)/);
+
+    if (!operations || operations.length != 2) {
+      throw new Error(`Invalid conditional statement '${condition}'.`);
+    }
+
+    let op = operations[1];
+    let operands = normalized.split(op);
+
+    _.each(operands, (operand) => {
+      let numeric = parseFloat(operand);
+      if (!_.isNaN(numeric)) return;
+
+      if (operand.length != 1 || !_.includes(this.parameters, operand)) {
+        throw new Error(`Invalid operand '${operand}' in conditional statement '${condition}'.`);
+      }
+    });
+
+    if (_.isEmpty(this.conditions)) {
+      this.conditions = { [normalized]: value.replace(/ /g, '') };
+    } else {
+      this.conditions[normalized] = value.replace(/ /g, '');
+    }
+
+    return this;
   }
 
-  evaluate(arglist) {
-    // Check to ensure the argument list length matches the expected number of
-    // arguments for this module.
-    if (arglist.length != this.arguments.length) {
-      console.error("Invalid argument list %O for symbol %s.", arglist, this.symbol);
+  expand(arglist) {
+    if (arglist.length != this.parameters.length) {
+      throw new Error(`Expected argument list of length ${this.parameters.length} but found ${arglist.length}.`);
     }
 
-    // Create a parsing context for this production.
-    let args = _.reduce(this.arguments, (m, name, idx) => {
-      m[name] = arglist[idx];
-      return m;
-    }, {});
-    let context = new Context(args);
+    let locals = _.reduce(arglist, (memo, arg, index) => {
+      let param = this.parameters[index];
+      let value = parseFloat(arg);
 
-    // Determine which raw production string should be generated.
-    let condProd = _.reduce(this.conditionals, (m, prod, cond) => {
-      if (!m.value && context.consider(cond)) {
-        m.value = prod;
+      if (_.isNaN(value)) {
+        throw new Error(`Value of parameter '${param}' is of incorrect type '${typeof arg}'.`);
       }
-      return m;
-    }, { value: null }).value;
 
-    let raw = condProd || this.production || this.predecessor;
+      memo[param] = arg;
+      return memo;
+    }, {});
 
-    // Perform variable substitution and evaluation on each argument list
-    // appearing in the production string.
-    return raw.replace(/\([^\(]+\)/g, (params) => {
-      return '(' + params.replace(/[\(\)]/g, '').split(',').map((expr) => {
-        return context.interpret(expr);
-      }).join(', ') + ')';
-    });
+    // Create a new context for expression evaluation.
+    let context = new Context(locals);
+
+    if (!this.production && _.isEmpty(this.conditions)) {
+      return "";
+    }
+
+    let result = this.production;
+    if (!_.isEmpty(this.conditions)) {
+      for (let cond in this.conditions) {
+        if (context.consider(cond)) {
+          result = this.conditions[cond];
+          break;
+        }
+      }
+    }
+
+    return context.evaluate(result);
   }
 }
