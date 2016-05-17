@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/context.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <a data-ice="repoURL" href="https://github.com/dkushner/ArborJS" class="repo-url-github">Repository</a>
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/context.js~Context.html">Context</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/grammar.js~Grammar.html">Grammar</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BACK">BACK</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-COLOR">COLOR</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FORWARD">FORWARD</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-POP">POP</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PUSH">PUSH</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ROTATE">ROTATE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SCALE">SCALE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RESTRICTED">RESTRICTED</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/context.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import _ from &quot;lodash&quot;;
+
+const BINARY_PATTERN = /(\w+)(\+|\-|\*|\/)(\w+)/g;
+
+export default class Context {
+  constructor(locals) {
+    this.locals = locals || {};
+
+    let symbols = _.escapeRegExp(Object.keys(this.locals).join(&apos;&apos;));
+    this.pattern = new RegExp(`[${symbols}]`);
+  }
+
+  consider(condition) {
+    let op = condition.match(/(\=|\&lt;|\&gt;)/)[1];
+    
+    if (!op) {
+      throw new Error(`Invalid conditional statement ${condition}. No operator.`);
+    }
+
+    let parts = condition.split(op);
+    let rawLeft = this.evaluate(parts[0]);
+    let rawRight = this.evaluate(parts[1]);
+    let lhs = parseFloat(rawLeft);
+    let rhs = parseFloat(rawRight);
+
+    if (_.isNaN(lhs)) {
+      throw new Error(`Unable to parse subexpression &quot;${rawLeft}&quot; of condition ${condition}.`);
+    }
+
+    if (_.isNaN(rhs)) {
+      throw new Error(`Unable to parse subexpression &quot;${rawRight}&quot; of condition ${condition}.`);
+    }
+
+    switch (op) {
+      case &apos;=&apos;: {
+        return lhs == rhs;
+      } break;
+      case &apos;&lt;&apos;: {
+        return lhs &lt; rhs;
+      } break;
+      case &apos;&gt;&apos;: {
+        return lhs &gt; rhs;
+      } break;
+      default: {
+        return false;
+      } break;
+    }
+  }
+
+  interpolate(expression) {
+    return _.replace(expression, this.pattern, (name, position, source) =&gt; {
+      return this.locals[name];
+    });
+  }
+
+  // Attempts to evaluate an arithmetic or constant expression.
+  // The function first interpolates the expression, replacing any local
+  // variables with their contextual value. It then evaluates any binary 
+  // expressions present in the expression
+  evaluate(expression) {
+    let interpolated = this.interpolate(expression);
+
+    // Then evaluate any binary operations present in the expression.
+    let evaluated = _.replace(interpolated, BINARY_PATTERN, (expr, position, source) =&gt; {
+      let parts = expr.match(BINARY_REGEX);
+      let lhs = parseFloat(parts[1]);
+      let op = parts[4];
+      let rhs = parseFloat(parts[5]);
+
+      switch (op) {
+        case &apos;+&apos;: {
+          return lhs + rhs;
+        } break;
+        case &apos;-&apos;: { 
+          return lhs - rhs;
+        } break;
+        case &apos;/&apos;: {
+          return lhs / rhs;
+        } break;
+        case &apos;*&apos;: {
+          return lhs * rhs;
+        } break;
+        default: {
+          return null;
+        } break;
+      }
+    }); 
+
+    return evaluated;
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.7)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

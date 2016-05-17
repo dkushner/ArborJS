@@ -67,64 +67,17 @@ export default class Grammar {
     return this.tokenize(expanded);
   }
 
-  scan(axiom, limit, cb, depth) {
-    depth = depth || 0;
-
-    if (depth == limit) {
-      return;
-    }
-
-    let index = 0;
-    while (index < axiom.length) {
-      let symbol = axiom[index];
-
-      let rule = this.rules[symbol];
-      if (!rule) {
-        throw new Error(`Unrecognized symbol ${token.symbol}.`);
-      }
-
-      // Check for an argument list and expand token to contain it.
-      let peek = index + 1;
-      let end = index;
-      let args = [];
-
-      if (axiom[peek] == '(') {
-        let close = axiom.indexOf(')', peek);
-        if (close == -1) {
-          throw new Error(`Invalid argument list for symbol ${symbol}.`);
-          return;
-        }
-
-        args = axiom.substring(peek + 1, close).replace(/ /g, '').split(',');
-        end = close;
-      } 
-
-      // Have the rule evaluate itself with the given parameters.
-      let token = axiom.substring(index, end + 1);
-      let production = rule.evaluate(args);
-      if (production == token) {
-        cb(production);
-      } else {
-        this.scan(production, limit, cb, depth + 1);
-      }
-      index = end + 1;
-    } 
-  }
-
-  addRule(pred, prod, conds) {
-    let symbol = pred[0];
-
-    if (_.includes(RESTRICTED, symbol)) {
-      console.error("Predecessor %s uses restricted symbol %s.", pred, symbol);
-      return;
-    }
-
-    if (_.includes(_.keys(this.terminals), symbol)) {
-      console.error("Predecessor %s uses constant symbol %s.", pred, symbol);
-      return;
-    }
-
-    this.rules[symbol] = new Rule(pred, prod, conds);
-    return this;
+  /**
+   * Adds a simple rule to the grammar.
+   *
+   * @param {string} predicate Rule predicate that expands into a production when interpreted.
+   * @param {?string} production The default production of this rule. If none is provided, the identity
+   * production is assumed.
+   * @return {Rule} The rule that was added to the grammar.
+   */
+  addRule(predicate, production) {
+    let rule = new Rule(predicate, production);
+    this.rules[rule.symbol] = rule;
+    return rule;
   }
 }

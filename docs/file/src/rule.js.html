@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/rule.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <a data-ice="repoURL" href="https://github.com/dkushner/ArborJS" class="repo-url-github">Repository</a>
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/grammar.js~Grammar.html">Grammar</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/rule.js~Rule.html">Rule</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BACK">BACK</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-COLOR">COLOR</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FORWARD">FORWARD</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-POP">POP</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PUSH">PUSH</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ROTATE">ROTATE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SCALE">SCALE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RESTRICTED">RESTRICTED</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/rule.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import _ from &quot;lodash&quot;;
+import { RESTRICTED } from &quot;./grammar&quot;;
+
+/**
+ * Encapsulates a single production rule in a grammar.
+ */
+export default class Rule {
+  /**
+   * Creates a new rule instance.
+   *
+   * @param {string} predicate Rule predicate that expands into a production when interpreted.
+   * @param {?string} production The default production of this rule. If none is provided, the identity
+   * production is assumed.
+   * @return {Rule} A new rule instance.
+   */
+  constructor(predecessor, production) {
+    this.predecessor = predecessor.replace(/ /g, &apos;&apos;);
+    this.symbol = this.predecessor[0];
+    this.parameters = [];
+
+    if (this.predecessor[1] == &apos;(&apos;) {
+      let close = this.predecessor.indexOf(&apos;)&apos;, 1);
+
+      if (close == -1) {
+        throw new Error(`Predecessor ${this.predecessor} has unclosed parameter list.`);
+      }
+
+      this.parameters = _.map(this.predecessor.substring(2, close).replace(/ /g, &apos;&apos;).split(&apos;,&apos;), (param) =&gt; {
+        if (param.length != 1 || _.includes(RESTRICTED, param)) {
+          throw new Error(`Predecessor ${this.predecessor} has illegal parameter &apos;${param}&apos;.`);
+        }
+        
+        return param;
+      });
+    }
+
+    // Parse the production to validate that all variable references are valid
+    // and to create resolvers for each set of virtual productions.
+    production = (production) ? production.replace(/ /g, &apos;&apos;) : this.predecessor;
+
+    let virtuals = [];
+    for (let index = 0; index &lt; production.length; index++) {
+      let symbol = production[index];
+
+      if (_.includes(RESTRICTED, symbol)) {
+        throw new Error(`Production ${production} contains restricted symbol &quot;${symbol}&quot;; position ${index}.`);
+      }
+
+      let virtual = { symbol };
+
+      if (production[index + 1] == &quot;(&quot;) {
+        let close = production.indexOf(&quot;)&quot;, index + 1);
+
+        if (close == -1) {
+          throw new Error(`Production ${production} has unclosed parameter list.`);
+        }
+
+        let parameters = production.substring(index + 2, close).split(&quot;,&quot;);
+        virtual.parameters = parameters.map(this.virtualize, this);
+        index = close;
+      }
+
+      virtuals.push(virtual);
+    }
+
+    this.production = virtuals;
+    this.conditionals = [];
+  }
+
+  /**
+   * Virtualizes simple expressions for repeated evaluation.
+   * 
+   * @param {!string} expression The simple expression to virtualize. 
+   * @return {function(ctx: Object)} Function that evaluates the expression for a provided context.
+   */
+  virtualize(expression) {
+    let numeric = parseFloat(expression);
+    if (!_.isNaN(numeric)) {
+      return () =&gt; { return numeric };
+    }
+
+    if (expression.length == 1 &amp;&amp; _.includes(this.parameters, expression)) {
+      return (ctx) =&gt; { return ctx[expression]; }
+    }
+
+    let comparison = expression.match(/(\=|\&lt;|\&gt;)/);
+    if (comparison) {
+      let op = comparison[1];
+      let operands = expression.split(op);
+      let lhs = this.virtualize(operands[0]);
+      let rhs = this.virtualize(operands[1]);
+
+      if (!lhs || !rhs) {
+        throw new Error(`Conditional &quot;${expression}&quot; contains invalid number of operands.`);
+      }
+
+      switch (comp) {
+        case &quot;=&quot;:
+          return (ctx) =&gt; { return lhs(ctx) == rhs(ctx) };
+        case &quot;&gt;&quot;:
+          return (ctx) =&gt; { return lhs(ctx) &gt; rhs(ctx) };
+        case &quot;&lt;&quot;:
+          return (ctx) =&gt; { return lhs(ctx) &lt; rhs(ctx) };
+      }
+    }
+
+    let arithmetic = expression.match(/(\+|\*|\-|\/)/);
+    if (arithmetic) {
+      let op = arithmetic[1];
+      let operands = expression.split(op);
+      let lhs = this.virtualize(operands[0]);
+      let rhs = this.virtualize(operands[1]);
+
+      if (!lhs || !rhs) {
+        throw new Error(`Binary operation &quot;${expression}&quot; contains invalid number of operands.`);
+      }
+
+      switch (op) {
+        case &quot;+&quot;:
+          return (ctx) =&gt; { return lhs(ctx) + rhs(ctx) };
+        case &quot;-&quot;:
+          return (ctx) =&gt; { return lhs(ctx) - rhs(ctx) };
+        case &quot;*&quot;:
+          return (ctx) =&gt; { return lhs(ctx) * rhs(ctx) };
+        case &quot;/&quot;:
+          return (ctx) =&gt; { return lhs(ctx) / rhs(ctx) };
+      }
+    }
+  }
+
+  /**
+   * Adds a condition production to the rule. Returns target rule and may be chained.
+   *
+   * @param {string} condition Conditional expression to evaluate.
+   * @param {string} production Production emitted when conditional expression is true.
+   * @return {Rule} The rule to which the conditional production was added.
+   */
+  addCondition(condition, production) {
+    production = production.replace(/ /g, &apos;&apos;);
+
+    let virtuals = [];
+    for (let index = 0; index &lt; production.length; index++) {
+      let symbol = production[index];
+
+      if (_.includes(RESTRICTED, symbol)) {
+        throw new Error(`Production ${production} contains restricted symbol &quot;${symbol}&quot;; position ${index}.`);
+      }
+
+      let virtual = { symbol };
+
+      if (production[index + 1] == &quot;(&quot;) {
+        let close = production.indexOf(&quot;)&quot;, index + 1);
+
+        if (close == -1) {
+          throw new Error(`Production ${production} has unclosed parameter list.`);
+        }
+
+        let parameters = production.substring(index + 2, close).split(&quot;,&quot;);
+        virtual.parameters = _.map(parameters, this.virtualize, this);
+        index = close;
+      }
+
+      virtuals.push(virtual);
+    }
+
+    this.conditionals.push({
+      given: this.virtualize(condition),
+      produce: virtuals
+    });
+
+    
+    return this;
+  }
+
+  /**
+   * Given an ordered argument list, returns an ordered array of tokens produced by the the rule.
+   *
+   * @param {number[]} arglist Numeric arguments to bind to predecessor parameters.
+   * @return {Object[]} List of generated tokens containing a symbol and evaluated parameters.
+   */
+  evaluate(arglist) {
+    if (arglist.length != this.parameters.length) {
+      throw new Error(`Expected argument list of length ${this.parameters.length} but found ${arglist.length}.`);
+    }
+
+    let locals = _.reduce(arglist, (memo, arg, index) =&gt; {
+      let param = this.parameters[index];
+      memo[param] = arg;
+      return memo;
+    }, {});
+
+    if (!this.production &amp;&amp; _.isEmpty(this.conditions)) {
+      return &quot;&quot;;
+    }
+
+    let result = this.production;
+    if (!_.isEmpty(this.conditions)) {
+      for (let cond in this.conditions) {
+        if (context.consider(cond)) {
+          result = this.conditions[cond];
+          break;
+        }
+      }
+    }
+
+    return context.evaluate(result);
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.7)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "coverage": "29.16%",
+  "expectCount": 24,
+  "actualCount": 7,
+  "files": {
+    "src/command.js": {
+      "expectCount": 7,
+      "actualCount": 1,
+      "undocumentLines": [
+        9,
+        13,
+        11,
+        10,
+        12,
+        14
+      ]
+    },
+    "src/grammar.js": {
+      "expectCount": 7,
+      "actualCount": 1,
+      "undocumentLines": [
+        8,
+        4,
+        9,
+        45,
+        10,
+        13
+      ]
+    },
+    "src/rule.js": {
+      "expectCount": 10,
+      "actualCount": 5,
+      "undocumentLines": [
+        67,
+        19,
+        17,
+        66,
+        18
+      ]
+    }
+  }
+}

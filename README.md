@@ -1,2 +1,2 @@
-# arbeit
-Barnes-Hut implementation in ES6 and WebGL.
+# ArborJS
+Complete L-system interpreter.

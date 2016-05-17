@@ -26,8 +26,8 @@ describe("Rule", () => {
       assert.isOk(rule);
       assert.instanceOf(rule, Rule);
       assert.lengthOf(rule.parameters, 3);
-      assert.equal(rule.production, "");
       assert(_.isEqual(rule.parameters, ['a', 'b', 'c']));
+      assert.lengthOf(rule.production, 1);
     });
 
     it("should reject invalid parameter lists", () => {
@@ -45,16 +45,8 @@ describe("Rule", () => {
   });
 
   describe("#addProduction", () => {
-    it("should accept simple productions", () => {
-      let rule = new Rule("F(a, b, c)").addProduction("NN");
-
-      assert.isOk(rule);
-      assert.instanceOf(rule, Rule);
-      assert.equal(rule.production, "NN");
-    });
-
     it("should accept conditional productions", () => {
-      let rule = new Rule("F(a, b, c)").addProduction("NN", "a > b");
+      let rule = new Rule("F(a, b, c)").addCondition("a > b", "NN");
 
       assert.isOk(rule);
       assert.instanceOf(rule, Rule);

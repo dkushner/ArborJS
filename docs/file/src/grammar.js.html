@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/grammar.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <a data-ice="repoURL" href="https://github.com/dkushner/ArborJS" class="repo-url-github">Repository</a>
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/grammar.js~Grammar.html">Grammar</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/rule.js~Rule.html">Rule</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BACK">BACK</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-COLOR">COLOR</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FORWARD">FORWARD</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-POP">POP</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PUSH">PUSH</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ROTATE">ROTATE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SCALE">SCALE</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RESTRICTED">RESTRICTED</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/grammar.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import _ from &quot;lodash&quot;;
+import Rule from &quot;./rule&quot;;
+
+const RESTRICTED = &apos;()0123456789*+-/&apos;;
+
+export { RESTRICTED };
+
+export default class Grammar {
+  constructor() {
+    this.rules = {}
+  }
+
+  tokenize(source) {
+    let tokens = [];
+
+    // Sanitize source string of whitespace.
+    source = source.replace(/ /g, &quot;&quot;);
+
+    for (let index = 0; index &lt; source.length; index++) {
+      let symbol = source[index];
+
+      if (_.includes(RESTRICTED, symbol)) {
+        throw new Error(`Source contains restricted symbol &quot;${symbol}&quot;; position ${index}.`);
+      }
+
+      let token = { symbol };
+
+      if (source[index + 1] == &quot;(&quot;) {
+        let close = source.indexOf(&quot;)&quot;, index + 1);
+
+        if (close == -1) {
+          throw new Error(`Source &quot;${source}&quot; has unclosed parameter list.`);
+        }
+
+        token.parameters = source.substring(index + 2, close).split(&quot;,&quot;);
+        index = close;
+      }
+
+      tokens.push(token);
+    }
+
+    return tokens;
+  }
+
+  interpret(source, limit) {
+    let expanded = source;
+    let tokens = [];
+
+    limit = limit || 1;
+
+    for (var level = 0; level &lt; limit; level++) {
+      tokens = this.tokenize(expanded);
+      expanded = &quot;&quot;;
+
+      _.each(tokens, (token) =&gt; {
+        let rule = this.rules[token.symbol];
+
+        if (!rule) {
+          throw new Error(`Unrecognized symbol ${token.symbol}.`);
+        }
+
+        expanded += rule.expand(token.parameters);
+      });
+    }
+
+    // Tokenize the final source string and drop any non-terminal tokens.
+    return this.tokenize(expanded);
+  }
+
+  /**
+   * Adds a simple rule to the grammar.
+   *
+   * @param {string} predicate Rule predicate that expands into a production when interpreted.
+   * @param {?string} production The default production of this rule. If none is provided, the identity
+   * production is assumed.
+   * @return {Rule} The rule that was added to the grammar.
+   */
+  addRule(predicate, production) {
+    let rule = new Rule(predicate, production);
+    this.rules[rule.symbol] = rule;
+    return rule;
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.7)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
