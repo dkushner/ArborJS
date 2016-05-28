@@ -59,7 +59,7 @@ export default class Grammar {
           throw new Error(`Unrecognized symbol ${token.symbol}.`);
         }
 
-        expanded += rule.expand(token.parameters);
+        expanded += rule.evaluate(token.parameters);
       });
     }
 

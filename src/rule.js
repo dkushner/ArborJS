@@ -168,7 +168,6 @@ export default class Rule {
       produce: virtuals
     });
 
-    
     return this;
   }
 
@@ -178,7 +177,7 @@ export default class Rule {
    * @param {number[]} arglist Numeric arguments to bind to predecessor parameters.
    * @return {Object[]} List of generated tokens containing a symbol and evaluated parameters.
    */
-  evaluate(arglist) {
+  expand(arglist) {
     if (arglist.length != this.parameters.length) {
       throw new Error(`Expected argument list of length ${this.parameters.length} but found ${arglist.length}.`);
     }
@@ -189,20 +188,27 @@ export default class Rule {
       return memo;
     }, {});
 
-    if (!this.production && _.isEmpty(this.conditions)) {
-      return "";
-    }
+    if (!_.isEmpty(this.conditionals)) {
+      for (let cond in this.conditionals) {
+        if (cond.given(locals)) {
+          return _.map(cond.produce, (token) => {
+            const parameters = _.map(token.parameters, (param) => {
+              return param(locals);
+            });
 
-    let result = this.production;
-    if (!_.isEmpty(this.conditions)) {
-      for (let cond in this.conditions) {
-        if (context.consider(cond)) {
-          result = this.conditions[cond];
-          break;
+            return { ...token, parameters }; 
+          });
         }
       }
     }
 
-    return context.evaluate(result);
+    return _.map(this.production, (token) => {
+      const parameters = _.map(token.parameters, (param) => {
+        return param(locals);
+      });
+
+      return { ...token, parameters };
+    });
   }
 }
+

@@ -1,3 +1,9 @@
-import * as Arbor from "./grammar.js";
+import Grammar from "./grammar";
+import Rule from "./rule";
 
-export default Arbor;
+const ArborJS = {
+  Grammar,
+  Rule
+};
+
+export default ArborJS;

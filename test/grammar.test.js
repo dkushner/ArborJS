@@ -22,9 +22,10 @@ describe("Grammar", () => {
       let grammar = new Grammar();
       grammar.addRule("F(a, b)", "F(a + 1, b * 3)#(a - b)");
 
-      let source = grammar.interpret("F(5, 1)", 1);
+      let result = grammar.interpret("F(5, 1)", 1);
 
-      assert.equal(source, "F(6,3)#(4)");
+      assert.isArray(result);
+      assert.lengthOf(result, 2);
     });
   });
 });
