@@ -10,6 +10,12 @@ export default class Grammar {
     this.rules = {}
   }
 
+  /**
+   * General purpose method for splitting a source string into tokens.
+   *
+   * @param {string} source The source string to tokenize.
+   * @return {object[]} The list of tokens produced from the source string.
+   */
   tokenize(source) {
     let tokens = [];
 
@@ -42,6 +48,13 @@ export default class Grammar {
     return tokens;
   }
 
+  /**
+   * Expands a source string into a set of tokens to a given depth.
+   *
+   * @param {string} source Source string to expand.
+   * @param {?number} limit The maximum depth to expand.
+   * @return {object[]} The resulting expanded token list.
+   */
   interpret(source, limit) {
     let expanded = source;
     let tokens = [];
@@ -63,7 +76,6 @@ export default class Grammar {
       });
     }
 
-    // Tokenize the final source string and drop any non-terminal tokens.
     return this.tokenize(expanded);
   }
 
