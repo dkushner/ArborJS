@@ -18,6 +18,10 @@ export default class Rule {
     this.symbol = this.predecessor[0];
     this.parameters = [];
 
+    if (_.includes(RESTRICTED, this.symbol)) {
+      throw new Error(`Rule uses restricted symbol ${this.symbol}.`);
+    }
+
     if (this.predecessor[1] == '(') {
       let close = this.predecessor.indexOf(')', 1);
 
@@ -174,7 +178,7 @@ export default class Rule {
   /**
    * Given an ordered argument list, returns an ordered array of tokens produced by the the rule.
    *
-   * @param {number[]} arglist Numeric arguments to bind to predecessor parameters.
+   * @param {number[]} arglist Raw arguments to bind to predecessor parameters.
    * @return {Object[]} List of generated tokens containing a symbol and evaluated parameters.
    */
   expand(arglist) {

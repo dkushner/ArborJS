@@ -55,40 +55,46 @@ export default class Grammar {
    * @param {?number} limit The maximum depth to expand.
    * @return {object[]} The resulting expanded token list.
    */
-  interpret(source, limit) {
-    let expanded = source;
+  interpret(source, limit = 1) {
+    let expanded = _.map(this.tokenize(source), (token) => {
+      token.parameters = _.map(token.parameters, (param) => {
+        let number = parseFloat(param);
+        if (!number) {
+          throw new Error(`Source strings cannot contain symbol parameters.`);
+        }
+
+        return number;
+      });
+      return token;
+    });
+
     let tokens = [];
 
-    limit = limit || 1;
-
     for (var level = 0; level < limit; level++) {
-      tokens = this.tokenize(expanded);
-      expanded = "";
+      tokens = [];
 
-      _.each(tokens, (token) => {
+      _.each(expanded, (token) => {
         let rule = this.rules[token.symbol];
 
         if (!rule) {
           throw new Error(`Unrecognized symbol ${token.symbol}.`);
         }
 
-        expanded += rule.evaluate(token.parameters);
+        Array.prototype.push.apply(tokens, rule.expand(token.parameters));
       });
+
+      expanded = tokens;
     }
 
-    return this.tokenize(expanded);
+    return tokens;
   }
 
   /**
    * Adds a simple rule to the grammar.
    *
-   * @param {string} predicate Rule predicate that expands into a production when interpreted.
-   * @param {?string} production The default production of this rule. If none is provided, the identity
-   * production is assumed.
-   * @return {Rule} The rule that was added to the grammar.
+   * @param {Rule} rule Rule to add to this grammar.
    */
-  addRule(predicate, production) {
-    let rule = new Rule(predicate, production);
+  addRule(rule) {
     this.rules[rule.symbol] = rule;
     return rule;
   }

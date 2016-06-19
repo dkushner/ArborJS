@@ -1,4 +1,5 @@
-import Grammar from "../src/grammar.js";
+import Grammar from "../src/grammar";
+import Rule from "../src/rule";
 import _ from "lodash";
 import { assert } from "chai";
 
@@ -20,12 +21,19 @@ describe("Grammar", () => {
   describe("#interpret", () => {
     it("should expand a valid source string", () => {
       let grammar = new Grammar();
-      grammar.addRule("F(a, b)", "F(a + 1, b * 3)#(a - b)");
+      let rule = new Rule("F(a, b)", "F(a + 1, b * 3)#(a - b)");
+      grammar.addRule(rule);
 
       let result = grammar.interpret("F(5, 1)", 1);
 
       assert.isArray(result);
       assert.lengthOf(result, 2);
+
+      let first = result[0];
+      assert.equal('F', first.symbol);
+      assert.lengthOf(first.parameters, 2);
+      assert.equal(6, first.parameters[0]);
+      assert.equal(3, first.parameters[1]);
     });
   });
 });

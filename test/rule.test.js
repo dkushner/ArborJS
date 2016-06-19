@@ -1,4 +1,4 @@
-import Rule from "../src/rule.js";
+import Rule from "../src/rule";
 import _ from "lodash";
 import { assert } from "chai";
 
