@@ -1,9 +1,9 @@
 import Grammar from "./grammar";
 import Rule from "./rule";
+import Turtle from "./turtle";
 
-const ArborJS = {
+export default {
   Grammar,
-  Rule
+  Rule,
+  Turtle
 };
-
-export default ArborJS;
