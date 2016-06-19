@@ -17,7 +17,6 @@ describe("Turtle3D", () => {
 
       let result = grammar.interpret("F(255)", 250);
       let points = turtle.consume(result);
-      console.log(points);
     });
   });
 });

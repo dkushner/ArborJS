@@ -59,7 +59,7 @@ export default class Grammar {
     let expanded = _.map(this.tokenize(source), (token) => {
       token.parameters = _.map(token.parameters, (param) => {
         let number = parseFloat(param);
-        if (!number) {
+        if (_.isNaN(number)) {
           throw new Error(`Source strings cannot contain symbol parameters.`);
         }
 
