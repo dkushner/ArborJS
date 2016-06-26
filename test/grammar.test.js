@@ -35,25 +35,25 @@ describe("Grammar", () => {
       assert.equal(6, first.parameters[0]);
       assert.equal(3, first.parameters[1]);
     });
-    
-    it("should correctly interpret literal zero values", () => {
-      let grammar = new Grammar();
-      let rule = new Rule("F(x)", "F(x - 1)F(x + 1)");
-      grammar.addRule(rule);
 
-      let result = grammar.interpret("F(0)", 1);
+    it("should handle modulus", () => {
+      let grammar = new Grammar();
+      let rule = new Rule("F(x)", "#(x%255,x%255,x%255)!(x)F(x+1)");
+      grammar.addRule(rule);
+      grammar.addRule(new Rule("#(r, g, b)"));
+      grammar.addRule(new Rule("!(x)"));
+
+      let result = grammar.interpret("F(0)", 1000);
+
       assert.isArray(result);
       assert.lengthOf(result, 2);
 
       let first = result[0];
       assert.equal('F', first.symbol);
-      assert.lengthOf(first.parameters, 1);
-      assert.equal(-1, first.parameters[0]);
-
-      let second = result[1];
-      assert.equal('F', second.symbol);
-      assert.lengthOf(second.parameters, 1);
-      assert.equal(1, second.parameters[0]);
+      assert.lengthOf(first.parameters, 2);
+      assert.equal(6, first.parameters[0]);
+      assert.equal(3, first.parameters[1]);
     });
+
   });
 });

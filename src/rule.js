@@ -108,7 +108,7 @@ export default class Rule {
       }
     }
 
-    let arithmetic = expression.match(/(\+|\*|\-|\/)/);
+    let arithmetic = expression.match(/(\+|\*|\-|\/|\%)/);
     if (arithmetic) {
       let op = arithmetic[1];
       let operands = expression.split(op);
@@ -128,6 +128,9 @@ export default class Rule {
           return (ctx) => { return lhs(ctx) * rhs(ctx) };
         case "/":
           return (ctx) => { return lhs(ctx) / rhs(ctx) };
+        case "%": {
+          return (ctx) => { return lhs(ctx) % rhs(ctx) };
+        }
       }
     }
   }
