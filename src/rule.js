@@ -78,19 +78,22 @@ export default class Rule {
    * @return {function(ctx: Object)} Function that evaluates the expression for a provided context.
    */
   virtualize(expression) {
-    let numeric = parseFloat(expression);
+    // Literal numeric value.
+    let numeric = new Number(expression);
     if (!_.isNaN(numeric)) {
       return () => { return numeric };
     }
 
+    // Context variable reference.
     if (expression.length == 1 && _.includes(this.parameters, expression)) {
       return (ctx) => { return ctx[expression]; }
     }
 
+    // Comparison expression.
     let comparison = expression.match(/(\=|\<|\>)/);
     if (comparison) {
       let op = comparison[1];
-      let operands = expression.split(op);
+      let operands = expression.split(op, 1);
       let lhs = this.virtualize(operands[0]);
       let rhs = this.virtualize(operands[1]);
 
@@ -108,12 +111,19 @@ export default class Rule {
       }
     }
 
-    let arithmetic = expression.match(/(\+|\*|\-|\/|\%)/);
+    // Binary and unary arithmetic expression.
+    let arithmetic = expression.match(/(\+|\*|\/|\%|\-)/);
     if (arithmetic) {
       let op = arithmetic[1];
-      let operands = expression.split(op);
+      let anchor = new RegExp('\\' + op + '(.+)?', 'g'); 
+      let operands = expression.split(anchor, 2);
       let lhs = this.virtualize(operands[0]);
       let rhs = this.virtualize(operands[1]);
+
+      // Cover unary negation.
+      if (!lhs && (op == '-')) {
+        return (ctx) => { return -1 * rhs(ctx) };
+      }
 
       if (!lhs || !rhs) {
         throw new Error(`Binary operation "${expression}" contains invalid number of operands.`);
@@ -122,15 +132,14 @@ export default class Rule {
       switch (op) {
         case "+":
           return (ctx) => { return lhs(ctx) + rhs(ctx) };
-        case "-":
-          return (ctx) => { return lhs(ctx) - rhs(ctx) };
         case "*":
           return (ctx) => { return lhs(ctx) * rhs(ctx) };
         case "/":
           return (ctx) => { return lhs(ctx) / rhs(ctx) };
-        case "%": {
+        case "%": 
           return (ctx) => { return lhs(ctx) % rhs(ctx) };
-        }
+        case "-":
+          return (ctx) => { return lhs(ctx) - rhs(ctx) };
       }
     }
   }

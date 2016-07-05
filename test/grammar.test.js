@@ -36,24 +36,39 @@ describe("Grammar", () => {
       assert.equal(3, first.parameters[1]);
     });
 
-    it("should handle modulus", () => {
+    it("should handle binary operators in order of precedence", () => {
       let grammar = new Grammar();
-      let rule = new Rule("F(x)", "#(x%255,x%255,x%255)!(x)F(x+1)");
+      let rule = new Rule("F(a, b)", "F(-1 * b, a - -b)");
       grammar.addRule(rule);
-      grammar.addRule(new Rule("#(r, g, b)"));
-      grammar.addRule(new Rule("!(x)"));
 
-      let result = grammar.interpret("F(0)", 1000);
+      let result = grammar.interpret("F(5, 1)");
 
       assert.isArray(result);
-      assert.lengthOf(result, 2);
+      assert.lengthOf(result, 1);
 
       let first = result[0];
       assert.equal('F', first.symbol);
       assert.lengthOf(first.parameters, 2);
-      assert.equal(6, first.parameters[0]);
-      assert.equal(3, first.parameters[1]);
+      assert.equal(-1, first.parameters[0]);
+      assert.equal(6, first.parameters[1]);
     });
 
+    it("should handle modulus operator", () => {
+      let grammar = new Grammar();
+      let rule = new Rule("F(x)", "#(x%255,x%255,x%255)F(-1 * x)");
+      grammar.addRule(rule);
+      grammar.addRule(new Rule("#(r, g, b)"));
+
+      let result = grammar.interpret("F(256)", 2);
+      assert.isArray(result);
+      assert.lengthOf(result, 3);
+
+      assert.equal("#", result[0].symbol);
+      assert.deepEqual([1, 1, 1], result[0].parameters);
+      assert.equal("#", result[1].symbol);
+      assert.deepEqual([-1, -1, -1], result[1].parameters);
+      assert.equal("F", result[2].symbol);
+      assert.deepEqual([256], result[2].parameters);
+    });
   });
 });

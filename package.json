@@ -1,6 +1,6 @@
 {
   "name": "arborjs",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Parametric L-system interpreter.",
   "main": "lib/index.js",
   "scripts": {

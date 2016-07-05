@@ -1,9 +1,7 @@
 import _ from "lodash";
 import Rule from "./rule";
 
-const RESTRICTED = '()0123456789*+-/';
-
-export { RESTRICTED };
+export const RESTRICTED = '()0123456789*+-/';
 
 export default class Grammar {
   constructor() {
