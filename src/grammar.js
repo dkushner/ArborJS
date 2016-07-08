@@ -27,7 +27,7 @@ export default class Grammar {
         throw new Error(`Source contains restricted symbol "${symbol}"; position ${index}.`);
       }
 
-      let token = { symbol };
+      let token = { symbol, parameters: [] };
 
       if (source[index + 1] == "(") {
         let close = source.indexOf(")", index + 1);
