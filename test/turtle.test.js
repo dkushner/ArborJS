@@ -1,26 +1,30 @@
-import Rule from "../src/rule";
+import { Turtle3D } from "../src/turtle";
 import Grammar from "../src/grammar";
 import { assert } from "chai";
-import { Turtle3D } from "../src/turtle";
+import sinon from "sinon";
 
 describe("Turtle3D", () => {
-  describe("#consume", () => {
-    it("should generate a point attribute set", () => {
+  describe("#constructor", () => {
+    it("should create a new turtle instance", () => {
       let turtle = new Turtle3D();
 
+      assert.isOk(turtle);
+      assert.instanceOf(turtle, Turtle3D);
+    });
+  });
+
+  describe("#consume", () => {
+    it("should consume tokenize strings and produce pointlists", () => {
       let grammar = new Grammar();
-      grammar.addRule(new Rule("!(d)"));
-      grammar.addRule(new Rule("#(r, g, b)"));
-      grammar.addRule(new Rule("@(x, y, z)"));
-      grammar.addRule(new Rule("["));
-      grammar.addRule(new Rule("]"));
-      grammar.addRule(new Rule("F(x)", "#(x, x, x)@(0, 90, 0)!(x)F(x)"));
+      grammar.addRule("F(x, y)", "#(x, y, x)!(x)X(x + 1, y + 1)");
+      grammar.addRule("X(x, y)", "F(x % 16, y % 16)");
 
-      let result = grammar.interpret("F(255)", 3);
-      let points = turtle.consume(result);
+      const result = grammar.evaluate("F(0, 0)", 255);
+      const tokens = grammar.tokenize(result);
 
-      assert.isArray(points);
-      assert.lengthOf(points, 4);
+      const turtle = new Turtle3D();
+      const points = turtle.consume(tokens);
     });
   });
 });
+

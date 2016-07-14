@@ -1,9 +1,3 @@
-import Grammar from "./grammar";
-import Rule from "./rule";
-import { Turtle3D } from "./turtle";
-
-export default {
-  Grammar,
-  Rule,
-  Turtle3D
-};
+export { default as Grammar } from "./grammar";
+export { default as Rule } from "./rule";
+export { default as Turtle, Turtle3D } from "./turtle";
