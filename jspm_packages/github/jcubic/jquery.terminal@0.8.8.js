@@ -1,1 +1,0 @@
-module.exports = require("github:jcubic/jquery.terminal@0.8.8/js/jquery.terminal-0.8.8");

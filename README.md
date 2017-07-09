@@ -1,31 +1,22 @@
-ArborJS
-=========
+# arborjs-pages
 
-ArborJS is a programmable L-system library developed in JavaScript. It uses THREE.JS for visualization purposes and was primary intended to generate procedural, rule-based geometry.
+> Nuxt.js project
 
+## Build Setup
 
+``` bash
+# install dependencies
+$ npm install # Or yarn install
 
-Version
--
+# serve with hot reload at localhost:3000
+$ npm run dev
 
-1.0
+# build for production and launch server
+$ npm run build
+$ npm start
 
-Dependencies
------------
+# generate static project
+$ npm run generate
+```
 
-ArborJS relies on the following tools and libraries for its basic functionality:
-
-* [THREE.JS] - seriously incredible web3D rendering toolkit
-
-Usage
-----------
-
-TODO
-
-License
--
-
-MIT
-
-[THREE.JS]: https://github.com/mrdoob/three.js/
-    
+For detailed explanation on how things work, checkout the [Nuxt.js docs](https://github.com/nuxt/nuxt.js).
